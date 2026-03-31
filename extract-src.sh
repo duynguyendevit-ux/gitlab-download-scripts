@@ -43,18 +43,23 @@ success=0
 skipped=0
 
 # ✅ Bắt đầu extract
-gum style --foreground 14 "🔍 Đang quét repositories..."
+gum style --foreground 14 "🔍 Đang quét repositories (bao gồm subfolders)..."
 
-for repo_path in "$SOURCE_BASE"/*; do
-  [[ ! -d "$repo_path" ]] && continue
+# Scan recursively for all directories
+find "$SOURCE_BASE" -type d -mindepth 1 | while read -r repo_path; do
+  # Skip hidden directories and common build folders
+  [[ "$(basename "$repo_path")" =~ ^\. ]] && continue
+  [[ "$(basename "$repo_path")" =~ ^(node_modules|target|build|dist|.git)$ ]] && continue
   
-  repo_name=$(basename "$repo_path")
-  ((total++))
-
-  # Tìm folder src (ưu tiên src/ ở root)
-  src_folder=$(find "$repo_path" -maxdepth 3 -type d -name "src" | head -n 1)
-  
-  if [[ -n "$src_folder" ]]; then
+  # Check if this directory contains a src/ folder
+  if [[ -d "$repo_path/src" ]]; then
+    # Get relative path from SOURCE_BASE
+    rel_path="${repo_path#$SOURCE_BASE/}"
+    repo_name="$rel_path"
+    
+    ((total++))
+    
+    src_folder="$repo_path/src"
     dest_folder="$DEST_BASE/$repo_name"
     mkdir -p "$dest_folder"
 
@@ -76,12 +81,6 @@ for repo_path in "$SOURCE_BASE"/*; do
     file_count=$(find "$dest_folder" -type f 2>/dev/null | wc -l)
     gum style --foreground 49 "✅ $repo_name: $file_count files"
     ((success++))
-  else
-    # Tạo thư mục rỗng cho repos không có src/
-    dest_folder="$DEST_BASE/$repo_name"
-    mkdir -p "$dest_folder"
-    gum style --foreground 11 "⚠️  $repo_name: không có src/ (tạo thư mục rỗng)"
-    ((skipped++))
   fi
 done
 
