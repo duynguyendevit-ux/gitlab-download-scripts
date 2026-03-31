@@ -10,14 +10,8 @@ gum style --border double --padding "1" --margin "1" \
   "📤 Extracting 'src/' folders from repositories"
 
 # 📂 Chọn thư mục nguồn
-gum style --foreground 33 "📂 Chọn thư mục chứa repos (mặc định: ./gitlab-repos):"
-use_default=$(gum choose "Dùng ./gitlab-repos" "Chọn thư mục khác")
-
-if [[ "$use_default" == "Dùng ./gitlab-repos" ]]; then
-  SOURCE_BASE="$(pwd)/gitlab-repos"
-else
-  SOURCE_BASE=$(gum file --directory)
-fi
+gum style --foreground 33 "📂 Chọn thư mục chứa repos:"
+SOURCE_BASE=$(gum file --directory)
 
 if [[ -z "$SOURCE_BASE" || ! -d "$SOURCE_BASE" ]]; then
   gum style --foreground 196 "❌ Thư mục nguồn không hợp lệ!"
@@ -26,14 +20,13 @@ fi
 
 gum style --foreground 49 "📂 Nguồn: $SOURCE_BASE"
 
-# 📁 Thư mục đích
-gum style --foreground 36 "📁 Chọn thư mục đích (mặc định: ./extracted-src):"
-use_default_dest=$(gum choose "Dùng ./extracted-src" "Chọn thư mục khác")
+# 📁 Chọn thư mục đích
+gum style --foreground 36 "📁 Chọn thư mục đích:"
+DEST_BASE=$(gum file --directory)
 
-if [[ "$use_default_dest" == "Dùng ./extracted-src" ]]; then
-  DEST_BASE="$(pwd)/extracted-src"
-else
-  DEST_BASE=$(gum file --directory)
+if [[ -z "$DEST_BASE" ]]; then
+  gum style --foreground 196 "❌ Chưa chọn thư mục đích!"
+  exit 1
 fi
 
 mkdir -p "$DEST_BASE"
