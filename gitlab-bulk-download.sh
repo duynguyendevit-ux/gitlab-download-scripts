@@ -1,8 +1,12 @@
 #!/bin/bash
 
-# 🎯 GitLab Bulk Clone/Download Tool (Fixed v2)
+# 🎯 GitLab Bulk Clone/Download Tool (Fixed v3)
 
 set -euo pipefail
+
+# Trap để debug
+trap 'echo "ERROR: Script exited at line $LINENO"' ERR
+trap 'echo "Script interrupted"' INT TERM
 
 gum style --border double --padding "1" --margin "1" \
   --border-foreground 33 --foreground 15 \
@@ -105,16 +109,20 @@ total_projects=$(wc -l < "$projects_file")
 gum style --foreground 14 "📦 Tìm thấy $total_projects projects"
 echo "🚀 Bắt đầu download..."
 echo "DEBUG: Projects file: $projects_file"
+echo "DEBUG: File exists: $(test -f "$projects_file" && echo YES || echo NO)"
+echo "DEBUG: File size: $(wc -c < "$projects_file") bytes"
+echo "DEBUG: Line count: $(wc -l < "$projects_file") lines"
 echo "DEBUG: First 3 lines:"
 head -3 "$projects_file"
 echo ""
+echo "DEBUG: Starting while loop..."
 
 current=0
 
 while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
   [[ -z "$id" ]] && continue
   ((current++))
-  echo "DEBUG: Processing project $current: id=$id path=$path"
+  echo "DEBUG: Loop iteration $current: id=$id"
   project_dir="$DEST_DIR/$path"
   
   echo "[$current/$total_projects] $path"
