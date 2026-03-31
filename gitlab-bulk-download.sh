@@ -43,11 +43,10 @@ else
   gum style --foreground 49 "✅ Đã lưu token"
 fi
 
-gum style --foreground 36 "📁 Chọn thư mục lưu repos:"
-DEST_DIR=$(gum file --directory)
-[[ -z "$DEST_DIR" ]] && { gum style --foreground 196 "❌ Chưa chọn thư mục!"; exit 1; }
-[[ -f "$DEST_DIR" ]] && { gum style --foreground 196 "❌ Đã chọn file, cần thư mục!"; exit 1; }
-mkdir -p "$DEST_DIR" 2>/dev/null || { gum style --foreground 196 "❌ Không tạo được thư mục!"; exit 1; }
+# 📁 Thư mục đích (dùng thư mục hiện tại)
+DEST_DIR="$(pwd)/gitlab-repos"
+mkdir -p "$DEST_DIR"
+gum style --foreground 49 "📁 Sẽ lưu vào: $DEST_DIR"
 
 gum style --foreground 14 "🎯 Chọn chế độ download:"
 MODE=$(gum choose "Source Only (chỉ code, nhanh - khuyến nghị)" "Full Clone (với git history)")
