@@ -45,54 +45,55 @@ skipped=0
 # ✅ Bắt đầu extract
 gum style --foreground 14 "🔍 Đang quét repositories (bao gồm subfolders)..."
 
-# Scan recursively for all directories
-find "$SOURCE_BASE" -type d -mindepth 1 | while read -r repo_path; do
-  # Skip hidden directories and common build folders
-  [[ "$(basename "$repo_path")" =~ ^\. ]] && continue
-  [[ "$(basename "$repo_path")" =~ ^(node_modules|target|build|dist|.git)$ ]] && continue
+# Find all directories with src/ folder
+temp_list="/tmp/extract-list-$$.txt"
+find "$SOURCE_BASE" -type d -name "src" > "$temp_list"
+
+echo "DEBUG: Found $(wc -l < "$temp_list") src/ folders"
+
+while read -r src_folder; do
+  # Get parent directory (the repo directory)
+  repo_path=$(dirname "$src_folder")
   
-  # Check if this directory contains a src/ folder
-  if [[ -d "$repo_path/src" ]]; then
-    # Get relative path from SOURCE_BASE
-    rel_path="${repo_path#$SOURCE_BASE/}"
-    repo_name="$rel_path"
-    
-    ((total++))
-    
-    src_folder="$repo_path/src"
-    dest_folder="$DEST_BASE/$repo_name"
-    mkdir -p "$dest_folder"
+  # Skip if parent is a build folder
+  parent_name=$(basename "$repo_path")
+  [[ "$parent_name" =~ ^(node_modules|target|build|dist)$ ]] && continue
+  
+  # Get relative path from SOURCE_BASE
+  rel_path="${repo_path#$SOURCE_BASE/}"
+  
+  total=$((total + 1))
+  
+  dest_folder="$DEST_BASE/$rel_path"
+  mkdir -p "$dest_folder"
 
-    # Copy, loại bỏ các file nhạy cảm
-    rsync -a --quiet \
-      --exclude='*.yml' \
-      --exclude='*.yaml' \
-      --exclude='*.properties' \
-      --exclude='*.env' \
-      --exclude='*.env.*' \
-      --exclude='.git' \
-      --exclude='node_modules' \
-      --exclude='target' \
-      --exclude='build' \
-      --exclude='dist' \
-      "$src_folder/" "$dest_folder/"
+  # Copy, loại bỏ các file nhạy cảm
+  rsync -a --quiet \
+    --exclude='*.yml' \
+    --exclude='*.yaml' \
+    --exclude='*.properties' \
+    --exclude='*.env' \
+    --exclude='*.env.*' \
+    --exclude='.git' \
+    --exclude='node_modules' \
+    --exclude='target' \
+    --exclude='build' \
+    --exclude='dist' \
+    "$src_folder/" "$dest_folder/"
 
-    # Đếm files đã copy
-    file_count=$(find "$dest_folder" -type f 2>/dev/null | wc -l)
-    gum style --foreground 49 "✅ $repo_name: $file_count files"
-    ((success++))
-  fi
-done
+  # Đếm files đã copy
+  file_count=$(find "$dest_folder" -type f 2>/dev/null | wc -l)
+  echo "✅ $rel_path: $file_count files"
+  success=$((success + 1))
+done < "$temp_list"
+
+rm "$temp_list"
 
 # ✅ Hoàn tất với summary
 echo ""
-gum style --border rounded --padding "1" --margin "1" \
-  --border-foreground 14 --foreground 15 \
-  "🎉 Hoàn tất!
-
-📊 Thống kê:
-  • Tổng repos: $total
-  • Thành công: $success
-  • Bỏ qua: $skipped
-
-📁 Kết quả: $DEST_BASE"
+echo "🎉 Hoàn tất!"
+echo "📊 Thống kê:"
+echo "  • Tổng repos: $total"
+echo "  • Thành công: $success"
+echo "  • Bỏ qua: $skipped"
+echo "📁 Kết quả: $DEST_BASE"
