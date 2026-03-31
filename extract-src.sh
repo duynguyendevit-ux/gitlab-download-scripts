@@ -67,6 +67,7 @@ while read -r src_folder; do
     --exclude='target' \
     --exclude='build' \
     --exclude='dist' \
+    --exclude='resources' \
     "$src_folder/" "$dest_folder/"
 
   # Đếm files đã copy
