@@ -127,7 +127,15 @@ while IFS='|' read -r id path clone_url branch; do
   mkdir -p "$(dirname "$project_dir")"
   
   if [[ "$MODE" == "Full Clone (với git history)" ]]; then
-    if git clone --quiet "$clone_url" "$project_dir" 2>/dev/null; then
+    # Convert ssh:// format to git@ format if needed
+    if [[ "$clone_url" =~ ^ssh://git@([^:]+):([0-9]+)/(.+)$ ]]; then
+      host="${BASH_REMATCH[1]}"
+      port="${BASH_REMATCH[2]}"
+      repo_path="${BASH_REMATCH[3]}"
+      clone_url="ssh://git@$host:$port/$repo_path"
+    fi
+    
+    if git clone "$clone_url" "$project_dir" 2>&1; then
       echo "  ✅ Cloned"
       ((total_success++))
     else
