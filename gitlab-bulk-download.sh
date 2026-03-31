@@ -164,11 +164,19 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
     download_status=$?
     
     if [[ $download_status -eq 0 ]] && echo "$download_output" | tar xzf - -C "$project_dir" --strip-components=1 2>/dev/null; then
-      echo "  ✅ Downloaded"
-      total_success=$((total_success + 1))
+      # Check if any files were extracted
+      file_count=$(find "$project_dir" -type f 2>/dev/null | wc -l)
+      if [[ $file_count -gt 0 ]]; then
+        echo "  ✅ Downloaded ($file_count files)"
+        total_success=$((total_success + 1))
+      else
+        echo "  ⚠️  Empty repo"
+        rmdir "$project_dir" 2>/dev/null || rm -rf "$project_dir"
+        total_skipped=$((total_skipped + 1))
+      fi
     else
       echo "  ❌ Failed: $(echo "$download_output" | head -1)"
-      rmdir "$project_dir" 2>/dev/null || true
+      rmdir "$project_dir" 2>/dev/null || rm -rf "$project_dir"
       total_failed=$((total_failed + 1))
     fi
   fi
