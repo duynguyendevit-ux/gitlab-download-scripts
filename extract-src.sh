@@ -37,7 +37,11 @@ gum style --foreground 14 "🔍 Đang quét repositories (bao gồm subfolders).
 temp_list="/tmp/extract-list-$$.txt"
 find "$SOURCE_BASE" -type d -name "src" > "$temp_list"
 
-echo "DEBUG: Found $(wc -l < "$temp_list") src/ folders"
+total_found=$(wc -l < "$temp_list")
+echo "DEBUG: Found $total_found src/ folders"
+echo "DEBUG: First 5 entries:"
+head -5 "$temp_list"
+echo ""
 
 while read -r src_folder; do
   # Get parent directory (the repo directory)
@@ -45,10 +49,15 @@ while read -r src_folder; do
   
   # Skip if parent is a build folder
   parent_name=$(basename "$repo_path")
-  [[ "$parent_name" =~ ^(node_modules|target|build|dist)$ ]] && continue
+  if [[ "$parent_name" =~ ^(node_modules|target|build|dist)$ ]]; then
+    echo "DEBUG: Skipping $parent_name (build folder)"
+    continue
+  fi
   
   # Get relative path from SOURCE_BASE
   rel_path="${repo_path#$SOURCE_BASE/}"
+  
+  echo "DEBUG: Processing $rel_path"
   
   total=$((total + 1))
   
