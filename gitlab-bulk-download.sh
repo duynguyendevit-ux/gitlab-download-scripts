@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 🎯 GitLab Bulk Clone/Download Tool (Fixed)
+# 🎯 GitLab Bulk Clone/Download Tool (Fixed v2)
 
 set -euo pipefail
 
@@ -85,7 +85,8 @@ else
 fi
 
 page=1
-declare -a all_projects
+projects_file="/tmp/gitlab-projects-$$.txt"
+> "$projects_file"
 
 while true; do
   response=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_TOKEN" \
@@ -93,23 +94,20 @@ while true; do
   project_count=$(echo "$response" | jq '. | length')
   [[ $project_count -eq 0 ]] && break
   
-  while IFS='|' read -r id path clone_url branch; do
-    all_projects+=("$id|$path|$clone_url|$branch")
-  done < <(echo "$response" | jq -r '.[] | "\(.id)|\(.path_with_namespace)|\(.ssh_url_to_repo)|\(.default_branch)"')
+  echo "$response" | jq -r '.[] | "\(.id)|\(.path_with_namespace)|\(.ssh_url_to_repo)|\(.default_branch)"' >> "$projects_file"
   
   ((page++))
 done
 
-total_projects=${#all_projects[@]}
-[[ $total_projects -eq 0 ]] && { gum style --foreground 11 "⚠️  Không tìm thấy project!"; exit 0; }
+total_projects=$(wc -l < "$projects_file")
+[[ $total_projects -eq 0 ]] && { gum style --foreground 11 "⚠️  Không tìm thấy project!"; rm "$projects_file"; exit 0; }
 
 gum style --foreground 14 "📦 Tìm thấy $total_projects projects"
 echo "🚀 Bắt đầu download..."
 
 current=0
 
-# Use while loop instead of for loop
-printf '%s\n' "${all_projects[@]}" | while IFS='|' read -r id path clone_url branch; do
+while IFS='|' read -r id path clone_url branch; do
   ((current++))
   project_dir="$DEST_DIR/$path"
   
@@ -124,7 +122,6 @@ printf '%s\n' "${all_projects[@]}" | while IFS='|' read -r id path clone_url bra
   mkdir -p "$(dirname "$project_dir")"
   
   if [[ "$MODE" == "Full Clone (với git history)" ]]; then
-    # Use SSH URL directly (no token needed)
     if git clone --quiet "$clone_url" "$project_dir" 2>/dev/null; then
       echo "  ✅ Cloned"
       ((total_success++))
@@ -145,7 +142,9 @@ printf '%s\n' "${all_projects[@]}" | while IFS='|' read -r id path clone_url bra
       ((total_failed++))
     fi
   fi
-done
+done < "$projects_file"
+
+rm "$projects_file"
 
 echo ""
 echo "🎉 Hoàn tất!"
