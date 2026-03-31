@@ -111,7 +111,8 @@ echo ""
 
 current=0
 
-while IFS='|' read -r id path clone_url branch; do
+while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
+  [[ -z "$id" ]] && continue
   ((current++))
   echo "DEBUG: Processing project $current: id=$id path=$path"
   project_dir="$DEST_DIR/$path"
