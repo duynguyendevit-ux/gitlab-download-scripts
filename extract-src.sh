@@ -25,18 +25,40 @@ gum style --foreground 49 "✓ Nguồn: $SOURCE_BASE"
 echo ""
 
 # 📁 Chọn thư mục đích
+echo ""
 gum style --foreground 36 --bold "📁 Chọn thư mục đích:"
-echo "   (Navigate và Enter để chọn)"
-DEST_BASE=$(gum file --directory)
+dest_choice=$(gum choose "Tạo thư mục mới" "Chọn thư mục có sẵn")
 
-if [[ -z "$DEST_BASE" ]]; then
-  gum style --foreground 196 "❌ Chưa chọn thư mục đích!"
-  exit 1
+if [[ "$dest_choice" == "Tạo thư mục mới" ]]; then
+  echo "   Nhập tên thư mục mới (hoặc đường dẫn đầy đủ):"
+  new_folder=$(gum input --placeholder "extracted-src")
+  
+  if [[ -z "$new_folder" ]]; then
+    gum style --foreground 196 "❌ Tên thư mục trống!"
+    exit 1
+  fi
+  
+  # If relative path, create in current directory
+  if [[ "$new_folder" != /* ]]; then
+    DEST_BASE="$(pwd)/$new_folder"
+  else
+    DEST_BASE="$new_folder"
+  fi
+  
+  mkdir -p "$DEST_BASE"
+  gum style --foreground 49 "✓ Đã tạo: $DEST_BASE"
+else
+  echo "   (Navigate và Enter để chọn)"
+  DEST_BASE=$(gum file --directory)
+  
+  if [[ -z "$DEST_BASE" ]]; then
+    gum style --foreground 196 "❌ Chưa chọn thư mục đích!"
+    exit 1
+  fi
+  
+  gum style --foreground 49 "✓ Đã chọn: $DEST_BASE"
 fi
 
-mkdir -p "$DEST_BASE"
-echo ""
-gum style --foreground 49 "✓ Đích: $DEST_BASE"
 echo ""
 
 # 📊 Counters
