@@ -77,7 +77,10 @@ for repo_path in "$SOURCE_BASE"/*; do
     gum style --foreground 49 "✅ $repo_name: $file_count files"
     ((success++))
   else
-    gum style --foreground 11 "⚠️  $repo_name: không tìm thấy src/"
+    # Tạo thư mục rỗng cho repos không có src/
+    dest_folder="$DEST_BASE/$repo_name"
+    mkdir -p "$dest_folder"
+    gum style --foreground 11 "⚠️  $repo_name: không có src/ (tạo thư mục rỗng)"
     ((skipped++))
   fi
 done
