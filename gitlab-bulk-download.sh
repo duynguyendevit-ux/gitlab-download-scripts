@@ -104,11 +104,16 @@ total_projects=$(wc -l < "$projects_file")
 
 gum style --foreground 14 "📦 Tìm thấy $total_projects projects"
 echo "🚀 Bắt đầu download..."
+echo "DEBUG: Projects file: $projects_file"
+echo "DEBUG: First 3 lines:"
+head -3 "$projects_file"
+echo ""
 
 current=0
 
 while IFS='|' read -r id path clone_url branch; do
   ((current++))
+  echo "DEBUG: Processing project $current: id=$id path=$path"
   project_dir="$DEST_DIR/$path"
   
   echo "[$current/$total_projects] $path"
