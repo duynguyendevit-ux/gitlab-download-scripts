@@ -9,33 +9,21 @@ gum style --border double --padding "1" --margin "1" \
   --border-foreground 33 --foreground 15 \
   "📤 Extracting 'src/' folders from repositories"
 
-# 📂 Chọn thư mục chứa các repository
-gum style --foreground 33 "📂 Chọn thư mục chứa các repository:"
-SOURCE_BASE=$(gum file --directory)
-if [[ -z "$SOURCE_BASE" ]]; then
-  gum style --foreground 196 "❌ Bạn chưa chọn thư mục nguồn. Thoát!"
-  exit 1
-fi
+# 📂 Thư mục nguồn (tự động dùng gitlab-repos/)
+SOURCE_BASE="$(pwd)/gitlab-repos"
 
-# Validate source directory
 if [[ ! -d "$SOURCE_BASE" ]]; then
-  gum style --foreground 196 "❌ Thư mục nguồn không tồn tại!"
+  gum style --foreground 196 "❌ Không tìm thấy thư mục: $SOURCE_BASE"
+  gum style --foreground 11 "💡 Chạy gitlab-bulk-download.sh trước để download repos"
   exit 1
 fi
 
-# 📁 Chọn thư mục đích
-gum style --foreground 36 "📁 Chọn thư mục đích để lưu kết quả extract:"
-DEST_BASE=$(gum file --directory)
-if [[ -z "$DEST_BASE" ]]; then
-  gum style --foreground 196 "❌ Bạn chưa chọn thư mục đích. Thoát!"
-  exit 1
-fi
+gum style --foreground 49 "📂 Nguồn: $SOURCE_BASE"
 
-# Create destination if not exists
-mkdir -p "$DEST_BASE" 2>/dev/null || {
-  gum style --foreground 196 "❌ Không thể tạo thư mục đích!"
-  exit 1
-}
+# 📁 Thư mục đích (tự động tạo extracted-src/)
+DEST_BASE="$(pwd)/extracted-src"
+mkdir -p "$DEST_BASE"
+gum style --foreground 49 "📁 Đích: $DEST_BASE"
 
 # 📊 Counters
 total=0
