@@ -9,19 +9,33 @@ gum style --border double --padding "1" --margin "1" \
   --border-foreground 33 --foreground 15 \
   "📤 Extracting 'src/' folders from repositories"
 
-# 📂 Thư mục nguồn (tự động dùng gitlab-repos/)
-SOURCE_BASE="$(pwd)/gitlab-repos"
+# 📂 Chọn thư mục nguồn
+gum style --foreground 33 "📂 Chọn thư mục chứa repos (mặc định: ./gitlab-repos):"
+use_default=$(gum choose "Dùng ./gitlab-repos" "Chọn thư mục khác")
 
-if [[ ! -d "$SOURCE_BASE" ]]; then
-  gum style --foreground 196 "❌ Không tìm thấy thư mục: $SOURCE_BASE"
-  gum style --foreground 11 "💡 Chạy gitlab-bulk-download.sh trước để download repos"
+if [[ "$use_default" == "Dùng ./gitlab-repos" ]]; then
+  SOURCE_BASE="$(pwd)/gitlab-repos"
+else
+  SOURCE_BASE=$(gum file --directory)
+fi
+
+if [[ -z "$SOURCE_BASE" || ! -d "$SOURCE_BASE" ]]; then
+  gum style --foreground 196 "❌ Thư mục nguồn không hợp lệ!"
   exit 1
 fi
 
 gum style --foreground 49 "📂 Nguồn: $SOURCE_BASE"
 
-# 📁 Thư mục đích (tự động tạo extracted-src/)
-DEST_BASE="$(pwd)/extracted-src"
+# 📁 Thư mục đích
+gum style --foreground 36 "📁 Chọn thư mục đích (mặc định: ./extracted-src):"
+use_default_dest=$(gum choose "Dùng ./extracted-src" "Chọn thư mục khác")
+
+if [[ "$use_default_dest" == "Dùng ./extracted-src" ]]; then
+  DEST_BASE="$(pwd)/extracted-src"
+else
+  DEST_BASE=$(gum file --directory)
+fi
+
 mkdir -p "$DEST_BASE"
 gum style --foreground 49 "📁 Đích: $DEST_BASE"
 
