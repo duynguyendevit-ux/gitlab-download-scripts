@@ -95,7 +95,7 @@ while true; do
   
   while IFS='|' read -r id path clone_url branch; do
     all_projects+=("$id|$path|$clone_url|$branch")
-  done < <(echo "$response" | jq -r '.[] | "\(.id)|\(.path_with_namespace)|\(.http_url_to_repo)|\(.default_branch)"')
+  done < <(echo "$response" | jq -r '.[] | "\(.id)|\(.path_with_namespace)|\(.ssh_url_to_repo)|\(.default_branch)"')
   
   ((page++))
 done
@@ -124,8 +124,8 @@ printf '%s\n' "${all_projects[@]}" | while IFS='|' read -r id path clone_url bra
   mkdir -p "$(dirname "$project_dir")"
   
   if [[ "$MODE" == "Full Clone (với git history)" ]]; then
-    auth_url=$(echo "$clone_url" | sed "s|http://|http://oauth2:$GITLAB_TOKEN@|")
-    if git clone --quiet "$auth_url" "$project_dir" 2>/dev/null; then
+    # Use SSH URL directly (no token needed)
+    if git clone --quiet "$clone_url" "$project_dir" 2>/dev/null; then
       echo "  ✅ Cloned"
       ((total_success++))
     else
