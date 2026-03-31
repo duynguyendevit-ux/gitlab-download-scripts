@@ -121,7 +121,7 @@ current=0
 
 while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
   [[ -z "$id" ]] && continue
-  ((current++))
+  current=$((current + 1))
   echo "DEBUG: Loop iteration $current: id=$id"
   project_dir="$DEST_DIR/$path"
   
@@ -129,7 +129,7 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
   
   if [[ -d "$project_dir" ]]; then
     echo "  ⚠️  Bỏ qua (đã tồn tại)"
-    ((total_skipped++))
+    total_skipped=$((total_skipped + 1))
     continue
   fi
   
@@ -146,10 +146,10 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
     
     if git clone "$clone_url" "$project_dir" 2>&1; then
       echo "  ✅ Cloned"
-      ((total_success++))
+      total_success=$((total_success + 1))
     else
       echo "  ❌ Failed"
-      ((total_failed++))
+      total_failed=$((total_failed + 1))
     fi
   else
     archive_url="$GITLAB_URL/api/v4/projects/$id/repository/archive.tar.gz?sha=$branch"
@@ -157,11 +157,11 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
     if curl -s --fail --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$archive_url" | \
        tar xzf - -C "$project_dir" --strip-components=1 2>/dev/null; then
       echo "  ✅ Downloaded"
-      ((total_success++))
+      total_success=$((total_success + 1))
     else
       echo "  ❌ Failed"
       rmdir "$project_dir" 2>/dev/null || true
-      ((total_failed++))
+      total_failed=$((total_failed + 1))
     fi
   fi
 done < "$projects_file"
