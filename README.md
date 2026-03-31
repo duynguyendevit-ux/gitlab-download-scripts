@@ -61,7 +61,7 @@ cat ~/.ssh/id_ed25519.pub
 
 Test kết nối:
 ```bash
-ssh -T git@10.0.0.40  # Thay bằng GitLab URL của bạn
+ssh -T git@your-gitlab-host  # Thay bằng GitLab host của bạn
 ```
 
 ### 2. Tạo GitLab Personal Access Token
@@ -78,7 +78,7 @@ ssh -T git@10.0.0.40  # Thay bằng GitLab URL của bạn
 ```
 
 **Workflow:**
-1. Nhập GitLab URL (mặc định: `http://10.0.0.40`)
+1. Nhập GitLab URL lần đầu (tự động lưu cho lần sau)
 2. Nhập Personal Access Token (tự động lưu cho lần sau)
 3. Chọn group/namespace hoặc "Tất cả projects"
 4. Chọn mode:
@@ -87,7 +87,7 @@ ssh -T git@10.0.0.40  # Thay bằng GitLab URL của bạn
 5. Script tự động download vào `./gitlab-repos/`
 
 **Lần chạy tiếp theo:**
-- Token đã lưu → chọn "Dùng token đã lưu"
+- URL và token đã lưu → Enter để dùng lại
 - Không cần nhập lại
 
 ### 4. Extract Source Code
@@ -99,12 +99,12 @@ Sau khi download, extract thư mục `src/` và loại bỏ config files:
 ```
 
 **Workflow:**
-1. Chọn thư mục chứa repos (ví dụ: `./gitlab-repos`)
-2. Chọn thư mục đích (ví dụ: `./extracted-src`)
+1. Chọn thư mục chứa repos (file picker chỉ hiển thị folders có nội dung)
+2. Chọn tạo folder mới hoặc chọn folder đích
 3. Script tự động:
    - Tìm thư mục `src/` trong mỗi repo
    - Copy code
-   - Loại bỏ: `.yml`, `.yaml`, `.properties`, `.env`, `.git`, `node_modules`, `target`, `build`, `dist`
+   - Loại bỏ: `.yml`, `.yaml`, `.properties`, `.env`, `.git`, `node_modules`, `target`, `build`, `dist`, `resources`
 
 ### 5. Quản lý Tokens
 

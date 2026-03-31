@@ -13,13 +13,27 @@ gum style --border double --padding "1" --margin "1" \
   "📦 GitLab Bulk Clone/Download Tool"
 
 TOKEN_FILE="$HOME/.gitlab-tokens.json"
-DEFAULT_URL="http://10.0.0.40"
+URL_FILE="$HOME/.gitlab-url.txt"
 
 [[ -f "$TOKEN_FILE" ]] && saved_tokens=$(cat "$TOKEN_FILE") || saved_tokens="{}"
+[[ -f "$URL_FILE" ]] && saved_url=$(cat "$URL_FILE") || saved_url=""
 
-gum style --foreground 33 "🔧 GitLab URL (Enter = $DEFAULT_URL):"
-GITLAB_URL=$(gum input --placeholder "$DEFAULT_URL" --value "$DEFAULT_URL")
-[[ -z "$GITLAB_URL" ]] && GITLAB_URL="$DEFAULT_URL"
+gum style --foreground 33 "🔧 GitLab URL:"
+if [[ -n "$saved_url" ]]; then
+  gum style --foreground 14 "   Đã lưu: $saved_url"
+  use_saved_url=$(gum choose "Dùng URL đã lưu" "Nhập URL mới")
+  if [[ "$use_saved_url" == "Dùng URL đã lưu" ]]; then
+    GITLAB_URL="$saved_url"
+  else
+    GITLAB_URL=$(gum input --placeholder "http://your-gitlab-host")
+    [[ -z "$GITLAB_URL" ]] && { gum style --foreground 196 "❌ URL trống!"; exit 1; }
+    echo "$GITLAB_URL" > "$URL_FILE"
+  fi
+else
+  GITLAB_URL=$(gum input --placeholder "http://your-gitlab-host")
+  [[ -z "$GITLAB_URL" ]] && { gum style --foreground 196 "❌ URL trống!"; exit 1; }
+  echo "$GITLAB_URL" > "$URL_FILE"
+fi
 
 saved_token=$(echo "$saved_tokens" | jq -r --arg url "$GITLAB_URL" '.[$url] // empty')
 

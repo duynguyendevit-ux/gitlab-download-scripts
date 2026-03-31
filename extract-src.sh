@@ -12,8 +12,8 @@ gum style --border double --padding "1" --margin "1" \
 # 📂 Chọn thư mục nguồn
 echo ""
 gum style --foreground 33 --bold "📂 Chọn thư mục chứa repos:"
-echo "   (Navigate và Enter để chọn)"
-SOURCE_BASE=$(gum file --directory)
+echo "   (Navigate và Enter để chọn - chỉ hiển thị folders có nội dung)"
+SOURCE_BASE=$(gum file --directory --file=false)
 
 if [[ -z "$SOURCE_BASE" || ! -d "$SOURCE_BASE" ]]; then
   gum style --foreground 196 "❌ Thư mục nguồn không hợp lệ!"
@@ -48,8 +48,8 @@ if [[ "$dest_choice" == "Tạo thư mục mới" ]]; then
   mkdir -p "$DEST_BASE"
   gum style --foreground 49 "✓ Đã tạo: $DEST_BASE"
 else
-  echo "   (Navigate và Enter để chọn)"
-  DEST_BASE=$(gum file --directory)
+  echo "   (Navigate và Enter để chọn - chỉ hiển thị folders có nội dung)"
+  DEST_BASE=$(gum file --directory --file=false)
   
   if [[ -z "$DEST_BASE" ]]; then
     gum style --foreground 196 "❌ Chưa chọn thư mục đích!"
