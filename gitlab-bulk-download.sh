@@ -107,8 +107,9 @@ gum style --foreground 14 "📦 Tìm thấy $total_projects projects"
 echo "🚀 Bắt đầu download..."
 
 current=0
-for project_data in "${all_projects[@]}"; do
-  IFS='|' read -r id path clone_url branch <<< "$project_data"
+
+# Use while loop instead of for loop
+printf '%s\n' "${all_projects[@]}" | while IFS='|' read -r id path clone_url branch; do
   ((current++))
   project_dir="$DEST_DIR/$path"
   
