@@ -10,7 +10,9 @@ gum style --border double --padding "1" --margin "1" \
   "📤 Extracting 'src/' folders from repositories"
 
 # 📂 Chọn thư mục nguồn
-gum style --foreground 33 "📂 Chọn thư mục chứa repos:"
+echo ""
+gum style --foreground 33 --bold "📂 Chọn thư mục chứa repos:"
+echo "   (Navigate và Enter để chọn)"
 SOURCE_BASE=$(gum file --directory)
 
 if [[ -z "$SOURCE_BASE" || ! -d "$SOURCE_BASE" ]]; then
@@ -18,10 +20,13 @@ if [[ -z "$SOURCE_BASE" || ! -d "$SOURCE_BASE" ]]; then
   exit 1
 fi
 
-gum style --foreground 49 "📂 Nguồn: $SOURCE_BASE"
+echo ""
+gum style --foreground 49 "✓ Nguồn: $SOURCE_BASE"
+echo ""
 
 # 📁 Chọn thư mục đích
-gum style --foreground 36 "📁 Chọn thư mục đích:"
+gum style --foreground 36 --bold "📁 Chọn thư mục đích:"
+echo "   (Navigate và Enter để chọn)"
 DEST_BASE=$(gum file --directory)
 
 if [[ -z "$DEST_BASE" ]]; then
@@ -30,7 +35,9 @@ if [[ -z "$DEST_BASE" ]]; then
 fi
 
 mkdir -p "$DEST_BASE"
-gum style --foreground 49 "📁 Đích: $DEST_BASE"
+echo ""
+gum style --foreground 49 "✓ Đích: $DEST_BASE"
+echo ""
 
 # 📊 Counters
 total=0
