@@ -156,7 +156,9 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
       total_failed=$((total_failed + 1))
     fi
   else
-    archive_url="$GITLAB_URL/api/v4/projects/$id/repository/archive.tar.gz?sha=$branch"
+    # URL encode the project ID (replace / with %2F)
+    encoded_id=$(echo "$id" | sed 's/\//%2F/g')
+    archive_url="$GITLAB_URL/api/v4/projects/$encoded_id/repository/archive.tar.gz?sha=$branch"
     mkdir -p "$project_dir"
     
     # Download and extract directly (don't capture binary data)
