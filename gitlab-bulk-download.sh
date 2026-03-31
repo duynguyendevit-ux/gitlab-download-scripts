@@ -144,22 +144,30 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
       clone_url="ssh://git@$host:$port/$repo_path"
     fi
     
-    if git clone "$clone_url" "$project_dir" 2>&1; then
+    # Clone with error output
+    clone_output=$(git clone "$clone_url" "$project_dir" 2>&1)
+    clone_status=$?
+    
+    if [[ $clone_status -eq 0 ]]; then
       echo "  ✅ Cloned"
       total_success=$((total_success + 1))
     else
-      echo "  ❌ Failed"
+      echo "  ❌ Failed: $(echo "$clone_output" | grep -i "error\|fatal" | head -1)"
       total_failed=$((total_failed + 1))
     fi
   else
     archive_url="$GITLAB_URL/api/v4/projects/$id/repository/archive.tar.gz?sha=$branch"
     mkdir -p "$project_dir"
-    if curl -s --fail --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$archive_url" | \
-       tar xzf - -C "$project_dir" --strip-components=1 2>/dev/null; then
+    
+    # Download with error output
+    download_output=$(curl -s --fail --header "PRIVATE-TOKEN: $GITLAB_TOKEN" "$archive_url" 2>&1)
+    download_status=$?
+    
+    if [[ $download_status -eq 0 ]] && echo "$download_output" | tar xzf - -C "$project_dir" --strip-components=1 2>/dev/null; then
       echo "  ✅ Downloaded"
       total_success=$((total_success + 1))
     else
-      echo "  ❌ Failed"
+      echo "  ❌ Failed: $(echo "$download_output" | head -1)"
       rmdir "$project_dir" 2>/dev/null || true
       total_failed=$((total_failed + 1))
     fi
