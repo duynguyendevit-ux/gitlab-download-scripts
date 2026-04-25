@@ -150,23 +150,39 @@ while IFS='|' read -r id path clone_url branch || [[ -n "$id" ]]; do
   mkdir -p "$(dirname "$project_dir")"
   
   if [[ "$MODE" == "Full Clone (với git history)" ]]; then
-    # Convert ssh:// format to git@ format if needed
-    if [[ "$clone_url" =~ ^ssh://git@([^:]+):([0-9]+)/(.+)$ ]]; then
-      host="${BASH_REMATCH[1]}"
-      port="${BASH_REMATCH[2]}"
-      repo_path="${BASH_REMATCH[3]}"
-      clone_url="ssh://git@$host:$port/$repo_path"
+    # Debug: Show clone URL
+    echo "  🔗 URL: $clone_url"
+    
+    # Test SSH connection first
+    if [[ "$clone_url" =~ ssh://git@([^:]+):([0-9]+) ]]; then
+      ssh_host="${BASH_REMATCH[1]}"
+      ssh_port="${BASH_REMATCH[2]}"
+      echo "  🔍 Testing SSH: $ssh_host:$ssh_port"
+      
+      # Quick SSH test (timeout 5s)
+      if timeout 5 ssh -p "$ssh_port" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "git@$ssh_host" 2>&1 | grep -q "successfully authenticated\|Welcome\|Hi"; then
+        echo "  ✅ SSH OK"
+      else
+        echo "  ⚠️  SSH connection may have issues"
+      fi
     fi
     
-    # Clone with error output
-    clone_output=$(git clone "$clone_url" "$project_dir" 2>&1)
+    # Clone with timeout and error output
+    echo "  🔄 Cloning..."
+    clone_output=$(timeout 300 git clone "$clone_url" "$project_dir" 2>&1)
     clone_status=$?
     
     if [[ $clone_status -eq 0 ]]; then
       echo "  ✅ Cloned"
       total_success=$((total_success + 1))
+    elif [[ $clone_status -eq 124 ]]; then
+      echo "  ❌ Timeout (>5 minutes)"
+      rm -rf "$project_dir"
+      total_failed=$((total_failed + 1))
     else
-      echo "  ❌ Failed: $(echo "$clone_output" | grep -i "error\|fatal" | head -1)"
+      error_msg=$(echo "$clone_output" | grep -i "error\|fatal\|permission denied\|connection" | head -1)
+      echo "  ❌ Failed: ${error_msg:-Unknown error}"
+      rm -rf "$project_dir"
       total_failed=$((total_failed + 1))
     fi
   else
