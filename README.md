@@ -7,17 +7,19 @@
 - 📦 Download tất cả repos từ GitLab (theo group hoặc toàn bộ)
 - 🔑 Lưu và quản lý access tokens tự động
 - 🎯 2 chế độ: Source Only (nhanh) hoặc Full Clone (với git history)
+- 🎯 Download đúng tag/commit từ danh sách `project_path:git_ref`
 - 📂 Tự động tạo thư mục `gitlab-repos/` trong thư mục hiện tại
 - 🔒 Dùng SSH để clone (nhanh và bảo mật)
 - 🗂️ Extract thư mục `src/` và loại bỏ config files
 
 ## 📋 Yêu cầu
 
-- `bash` 4.0+
+- `bash` 3.2+
 - `gum` (CLI tool) - [Cài đặt](https://github.com/charmbracelet/gum)
 - `jq` - JSON processor
 - `curl`
 - `git`
+- `ssh` (OpenSSH client)
 - `rsync` (cho extract-src.sh)
 - SSH key đã setup với GitLab
 
@@ -90,6 +92,107 @@ ssh -T git@your-gitlab-host  # Thay bằng GitLab host của bạn
 - URL và token đã lưu → Enter để dùng lại
 - Không cần nhập lại
 
+### 3.1. Cấu hình và migration
+
+Các script lưu cấu hình tại:
+
+```text
+~/.config/gitlabdowloadtool/
+├── gitlab-tokens.json   # permission 600
+└── gitlab-url.txt       # permission 600
+```
+
+Thư mục cấu hình có permission `700`. Khi khởi động, `gitlab-config.sh` tự
+động tạo thư mục và sao chép các file legacy nếu file mới chưa tồn tại:
+
+```text
+~/.gitlab-tokens.json
+~/.gitlab-url.txt
+```
+
+Các file legacy được giữ nguyên, không bị xóa. Token manager và các script
+liên quan đều dùng cấu hình mới.
+
+### 3.2. Download theo image path và revision
+
+Ref-list vẫn có dạng `image_or_project_path:git_ref`. Dòng trống và dòng bắt
+đầu bằng `#` được bỏ qua. Các input image path không cần trùng namespace GitLab;
+script thử exact candidates theo thứ tự:
+
+1. Path gốc
+2. Bỏ tiền tố `ots/apps/`
+3. Bỏ tiền tố `ots/`
+4. Với path bắt đầu `ttdvkh/`, thử `c7-ttdvkh/`
+5. Thử đổi segment `/notification/` thành `/notifications/`
+
+Nếu không có exact project, script search theo basename cuối cùng và, khi tên
+kết thúc bằng `-service`, thử thêm basename đã bỏ hậu tố đó. Mỗi search result
+được kiểm tra revision qua GitLab API. Nếu có nhiều hoặc không có candidate
+chứa revision, item bị fail và script in các candidate/action cần làm; script
+không tự đoán.
+
+Nếu pagination, API, transport, `429`, hoặc `5xx` làm verification không đầy
+đủ, script cũng fail conservatively dù đã thấy một match. Hãy sửa quyền/kết
+nối API rồi retry; dùng exact GitLab path hoặc explicit `tag@`/`commit@` để
+giảm phạm vi tìm kiếm.
+
+Revision có thể ghi theo các dạng sau:
+
+- `7-40` ký tự hex không prefix: commit
+- Ref không prefix khác: tag
+- `tag@<name>`: tag, kể cả tag toàn hex
+- `commit@<sha>`: commit bắt buộc `7-40` ký tự hex
+
+Ví dụ:
+
+```text
+ots/apps/c7/infras/gateway:tag@prod-c7-v0.0.3
+ots/apps/c7/qtud/category-service:e760bd05
+ots/apps/c7/qtud/category-service:commit@e760bd05
+```
+
+Chạy với file hoặc stdin:
+
+```bash
+./gitlab-bulk-download.sh --ref-list refs.txt
+cat refs.txt | ./gitlab-bulk-download.sh --ref-list -
+```
+
+Ref-list mode cần `git`, `ssh`, và SSH access tới GitLab. Script dùng
+`.ssh_url_to_repo` do API trả về, không hardcode host/port. Với tag, Git được
+shallow-clone đúng tag; với commit, script `git init`, thêm remote, fetch
+`--depth 1` revision rồi checkout detached `FETCH_HEAD`. Sau đó `git archive`
+export source-only, nên output không chứa `.git`.
+
+Output dùng namespace GitLab đã resolve, không dùng path input:
+
+```text
+input:  ots/apps/c7/infras/gateway:tag@prod-c7-v0.0.3
+output: gitlab-repos/c7/infras/gateway/
+```
+
+Mỗi item được stage trong thư mục ẩn bên trong `gitlab-repos/` rồi cài đặt
+không ghi đè. Destination đã tồn tại được bỏ qua. Token API chỉ nằm trong
+file curl tạm permission 600, không nằm trong command arguments. Summary gồm
+Downloaded/Skipped/Failed và exit code khác 0 nếu có item fail.
+
+Khi chạy `--ref-list`, sau khi xử lý hết input script tạo atomically manifest
+`gitlab-repos/.gitlab-ref-projects.txt`. Manifest chứa mỗi resolved GitLab
+`path_with_namespace` đúng một lần cho item đã download thành công trong chính
+run hiện tại. Destination đã tồn tại hoặc xuất hiện trong race vẫn được skip
+và giữ nguyên, nhưng bị loại khỏi manifest vì không có metadata đáng tin cậy để
+chứng minh revision được yêu cầu; chỉ duplicate sau một install thành công
+trong cùng run còn được biểu diễn bởi entry đã có. Item fail/không resolve cũng
+không được ghi. Manifest vẫn được publish khi run có một phần lỗi, nên exit code
+vẫn khác 0 nhưng manifest phản ánh subset đã download của ref-list hiện tại.
+Ref-list rỗng tạo manifest rỗng.
+
+Manifest cũng lưu identity revision theo dạng `tag:<tag-name>` hoặc
+`commit:<canonical-full-sha>`. Cùng path với cùng identity (kể cả implicit và
+explicit commit trỏ tới cùng canonical SHA) chỉ giữ một entry. Cùng path với
+identity khác là conflicting duplicate: item bị fail, path bị loại khỏi
+manifest, và cần tách revision/path trong ref-list.
+
 ### 4. Extract Source Code
 
 Sau khi download, extract thư mục `src/` và loại bỏ config files:
@@ -97,6 +200,37 @@ Sau khi download, extract thư mục `src/` và loại bỏ config files:
 ```bash
 ./extract-src.sh
 ```
+
+Chạy không tương tác bằng tham số dài hoặc ngắn:
+
+```bash
+./extract-src.sh --source ./gitlab-repos --destination ./extracted-src
+./extract-src.sh -s ./gitlab-repos -d ./extracted-src
+./extract-src.sh --source ./gitlab-repos --destination ./extracted-src \
+  --manifest ./gitlab-repos/.gitlab-ref-projects.txt
+./extract-src.sh --source ./gitlab-repos --destination ./extracted-src --all
+```
+
+Hai tham số `--source`/`--destination` phải đi theo cặp. Trong CLI, nếu không
+ghi `--manifest` hoặc `--all` và source có manifest readable, script tự động
+dùng manifest đó. `--manifest FILE` chỉ lọc các project an toàn được liệt kê;
+dòng trống/comment bị bỏ qua, project không tồn tại chỉ cảnh báo rồi tiếp tục.
+`--all` khôi phục scan toàn bộ source tree. Hai option này xung đột và lỗi với
+exit code 2 nếu manifest không readable.
+
+Chạy `./extract-src.sh` không có tham số vẫn mở workflow chọn thư mục tương
+tác như trước. Nếu source có manifest, workflow hỏi `Chỉ projects từ ref-list
+gần nhất` hoặc `Tất cả repositories` sau khi chọn source.
+
+Filter chỉ tìm `src/` bên trong các project được chọn, vẫn giữ layout tương
+đối và toàn bộ rsync exclusions hiện có. Mặc định manifest là subset đã
+download thành công trong run hiện tại, không phải danh sách các destination
+cũ bị skip. Vì vậy nên dùng source root mới/rỗng cho một run ref-list mới, hoặc
+dùng `--all` khi muốn quét các repository đã có từ trước. Script không xóa file
+trong destination đã dùng và rsync không có `--delete`; hãy chọn destination
+mới/rỗng nếu cần snapshot chính xác, vì file stale trong destination cũ vẫn còn.
+Nếu một project scan lỗi hoặc không đọc được, extractor báo lỗi, không coi run
+là thành công và thoát với exit code 1.
 
 **Workflow:**
 1. Chọn thư mục chứa repos (file picker chỉ hiển thị folders có nội dung)
@@ -117,7 +251,9 @@ Sau khi download, extract thư mục `src/` và loại bỏ config files:
 - Xóa token theo URL
 - Xóa tất cả tokens
 
-Tokens được lưu tại: `~/.gitlab-tokens.json` (permission 600)
+Tokens được lưu tại: `~/.config/gitlabdowloadtool/gitlab-tokens.json`
+(permission 600). URL đang dùng được lưu tại:
+`~/.config/gitlabdowloadtool/gitlab-url.txt` (permission 600).
 
 ## 📁 Cấu trúc thư mục
 
@@ -159,11 +295,13 @@ ssh-add ~/.ssh/id_ed25519
 
 ```bash
 # Kiểm tra permission
-ls -la ~/.gitlab-tokens.json
-# Nếu không có, tạo thủ công:
-touch ~/.gitlab-tokens.json
-chmod 600 ~/.gitlab-tokens.json
+ls -ld ~/.config/gitlabdowloadtool
+ls -l ~/.config/gitlabdowloadtool/gitlab-tokens.json
+ls -l ~/.config/gitlabdowloadtool/gitlab-url.txt
 ```
+
+Nếu bạn còn file `~/.gitlab-tokens.json` hoặc `~/.gitlab-url.txt`, chạy lại
+script để helper tự động copy sang cấu hình mới. File cũ vẫn được giữ lại.
 
 ## 🎯 Use Cases
 
@@ -185,12 +323,17 @@ chmod 600 ~/.gitlab-tokens.json
 ./extract-src.sh           # Extract src/ only
 ```
 
+**4. Lấy code tại revision cụ thể:**
+```bash
+./gitlab-bulk-download.sh --ref-list refs.txt
+```
+
 ## 📝 Notes
 
 - **Source Only mode**: Nhanh hơn ~3-5x so với Full Clone
 - **SSH vs HTTP**: SSH nhanh hơn và không cần token trong URL
 - **Token security**: Tokens được lưu local với permission 600
-- **Incremental download**: Repos đã tồn tại sẽ bị bỏ qua
+- **Incremental download**: Repos đã tồn tại sẽ bị bỏ qua, không ghi đè hoặc xóa
 
 ## 🤝 Contributing
 

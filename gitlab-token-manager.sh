@@ -4,9 +4,14 @@
 
 set -euo pipefail
 
-TOKEN_FILE="$HOME/.gitlab-tokens.json"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=gitlab-config.sh
+source "$SCRIPT_DIR/gitlab-config.sh"
+gitlab_config_init
 
-if [[ ! -f "$TOKEN_FILE" ]]; then
+TOKEN_FILE="$GITLAB_TOKEN_FILE"
+
+if [[ ! -s "$TOKEN_FILE" ]] || [[ "$(jq -r 'length' "$TOKEN_FILE")" -eq 0 ]]; then
   gum style --foreground 11 "⚠️  Chưa có token nào được lưu"
   exit 0
 fi
@@ -37,13 +42,13 @@ case "$action" in
   "Xóa token")
     url_to_delete=$(echo "$saved_tokens" | jq -r 'keys[]' | gum choose)
     saved_tokens=$(echo "$saved_tokens" | jq --arg url "$url_to_delete" 'del(.[$url])')
-    echo "$saved_tokens" > "$TOKEN_FILE"
+    gitlab_config_save_tokens "$saved_tokens"
     gum style --foreground 49 "✅ Đã xóa token cho $url_to_delete"
     ;;
   "Xóa tất cả")
     confirm=$(gum choose "Xác nhận xóa tất cả" "Hủy")
     if [[ "$confirm" == "Xác nhận xóa tất cả" ]]; then
-      rm "$TOKEN_FILE"
+      gitlab_config_save_tokens '{}'
       gum style --foreground 49 "✅ Đã xóa tất cả tokens"
     fi
     ;;

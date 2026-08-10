@@ -7,11 +7,24 @@ set -e
 
 REPOS_DIR="${1:-./gitlab-repos}"
 
-# Load saved GitLab URL and token
-TOKEN_FILE="$HOME/.gitlab-tokens.json"
-if [[ -f "$TOKEN_FILE" ]]; then
-  GITLAB_URL=$(jq -r 'keys[0]' "$TOKEN_FILE" 2>/dev/null || echo "")
-  GITLAB_TOKEN=$(jq -r ".\"$GITLAB_URL\"" "$TOKEN_FILE" 2>/dev/null || echo "")
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=gitlab-config.sh
+source "$SCRIPT_DIR/gitlab-config.sh"
+gitlab_config_init
+
+# Preserve explicit environment overrides and fill only missing values from config.
+if [[ -z "${GITLAB_URL+x}" ]]; then
+  GITLAB_URL=""
+  if [[ -f "$GITLAB_URL_FILE" ]]; then
+    GITLAB_URL=$(<"$GITLAB_URL_FILE")
+  fi
+fi
+
+if [[ -z "${GITLAB_TOKEN+x}" ]]; then
+  GITLAB_TOKEN=""
+  if [[ -n "$GITLAB_URL" ]]; then
+    GITLAB_TOKEN=$(jq -r --arg url "$GITLAB_URL" '.[$url] // empty' "$GITLAB_TOKEN_FILE")
+  fi
 fi
 
 if [[ -z "$GITLAB_URL" ]] || [[ -z "$GITLAB_TOKEN" ]]; then
